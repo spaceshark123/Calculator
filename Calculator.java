@@ -2,14 +2,37 @@ import javax.swing.*;
 import java.awt.*;
 
 public class Calculator {
+	// GUI properties
 	private int fontSize = 24;
 	private final static int WIDTH = 300;
 	private final static int HEIGHT = 300;
 
+	// GUI components
 	JButton[] numberButtons = new JButton[10];
 	JFrame frame = new JFrame("Calculator");
 	JTextField text = new JTextField("");
 	JPanel buttons = new JPanel();
+
+	// enums for operator types and calculator states
+	private enum Operator {
+		NONE,
+		ADD,
+		SUBTRACT,
+		MULTIPLY,
+		DIVIDE,
+		SQRT,
+		POW
+	}
+	private enum State {
+		FIRST_OPERAND,
+		SECOND_OPERAND
+	}
+	
+	// state variables
+	private Operator operator = Operator.NONE;
+	private State state = State.FIRST_OPERAND;
+	private double firstOperand = 0;
+	private double secondOperand = 0;
 
 	public Calculator() {
 		// call the other constructor with default font size
@@ -36,13 +59,23 @@ public class Calculator {
 	private void setupButtons() {
 		// create number buttons
 		for (int i = 0; i < 10; i++) {
+			final int number = i;
 			numberButtons[i] = new JButton(Integer.toString(i));
 			numberButtons[i].setFont(new Font("Arial", Font.PLAIN, fontSize));
+			numberButtons[i].addActionListener(e -> {
+				if (state == State.FIRST_OPERAND) {
+					firstOperand = firstOperand * 10 + number;
+					updateText();
+				} else if (state == State.SECOND_OPERAND) {
+					secondOperand = secondOperand * 10 + number;
+					updateText();
+				}
+			});
 		}
 		// create operator buttons
 		JButton addButton = new JButton("+");
 		JButton subtractButton = new JButton("-");
-		JButton multiplyButton = new JButton("*");
+		JButton multiplyButton = new JButton("x");
 		JButton divideButton = new JButton("÷");
 		JButton equalsButton = new JButton("=");
 		JButton clearButton = new JButton("C");
@@ -61,6 +94,102 @@ public class Calculator {
 		decimalButton.setFont(new Font("Arial", Font.PLAIN, fontSize));
 		sqrtButton.setFont(new Font("Arial", Font.PLAIN, fontSize));
 		powButton.setFont(new Font("Arial", Font.PLAIN, fontSize));
+		// add action listeners for operator buttons
+		addButton.addActionListener(e -> {
+			if(state != State.FIRST_OPERAND) {
+				return;
+			}
+			operator = Operator.ADD;
+			state = State.SECOND_OPERAND;
+			text.setText("+");
+		});
+		subtractButton.addActionListener(e -> {
+			if(state != State.FIRST_OPERAND) {
+				return;
+			}
+			operator = Operator.SUBTRACT;
+			state = State.SECOND_OPERAND;
+			text.setText("-");
+		});
+		multiplyButton.addActionListener(e -> {
+			if(state != State.FIRST_OPERAND) {
+				return;
+			}
+			operator = Operator.MULTIPLY;
+			state = State.SECOND_OPERAND;
+			text.setText("x");
+		});
+		divideButton.addActionListener(e -> {
+			if(state != State.FIRST_OPERAND) {
+				return;
+			}
+			operator = Operator.DIVIDE;
+			state = State.SECOND_OPERAND;
+			text.setText("÷");
+		});
+		sqrtButton.addActionListener(e -> {
+			if(state == State.FIRST_OPERAND) {
+				firstOperand = Math.sqrt(firstOperand);
+			} else if (state == State.SECOND_OPERAND) {
+				secondOperand = Math.sqrt(secondOperand);
+			}
+			updateText();
+			operator = Operator.NONE;
+			state = State.FIRST_OPERAND;
+		});
+		powButton.addActionListener(e -> {
+			if(state == State.FIRST_OPERAND) {
+				firstOperand = Math.pow(firstOperand, 2);
+			} else if (state == State.SECOND_OPERAND) {
+				secondOperand = Math.pow(secondOperand, 2);
+			}
+			updateText();
+			operator = Operator.NONE;
+			state = State.FIRST_OPERAND;
+		});
+		equalsButton.addActionListener(e -> {
+			if(operator == Operator.NONE) {
+				return;
+			}
+			double result = 0;
+			switch (operator) {
+				case ADD:
+					result = firstOperand + secondOperand;
+					break;
+				case SUBTRACT:
+					result = firstOperand - secondOperand;
+					break;
+				case MULTIPLY:
+					result = firstOperand * secondOperand;
+					break;
+				case DIVIDE:
+					result = firstOperand / secondOperand;
+					break;
+				default:
+					break;
+			}
+			firstOperand = result;
+			secondOperand = 0;
+			state = State.FIRST_OPERAND;
+			operator = Operator.NONE;
+			updateText();
+		});
+		clearButton.addActionListener(e -> {
+			firstOperand = 0;
+			secondOperand = 0;
+			state = State.FIRST_OPERAND;
+			operator = Operator.NONE;
+			updateText();
+		});
+		clearEntryButton.addActionListener(e -> {
+			if (state == State.FIRST_OPERAND) {
+				firstOperand = 0;
+			} else if (state == State.SECOND_OPERAND) {
+				secondOperand = 0;
+			}
+			updateText();
+		});
+		// todo: implement decimal button
 
 		// arrange button grid layout
 		buttons.add(clearButton);
@@ -93,5 +222,15 @@ public class Calculator {
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setSize(WIDTH, HEIGHT);
 		frame.setVisible(true);
+	}
+
+	private void updateText() {
+		if (state == State.FIRST_OPERAND) {
+			text.setText(Double.toString(firstOperand));
+		} else if (state == State.SECOND_OPERAND) {
+			text.setText(Double.toString(secondOperand));
+		} else {
+			text.setText("Error");
+		}
 	}
 }
