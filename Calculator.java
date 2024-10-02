@@ -268,7 +268,7 @@ public class Calculator {
 		// if addDecimal, set placeValue to least significant decimal place (0.1, 0.01, etc.) or else set to 1
 		if(addDecimal) {
 			int multiplier = 1;
-			while ((firstOperand * multiplier) % 1 > 1e-10) {
+			while ((Math.abs(firstOperand) * multiplier) % 1 > 1e-10) {
 				multiplier *= 10;
 			}
 			placeValue = 1d / multiplier;
@@ -293,7 +293,7 @@ public class Calculator {
 	}
 
 	private double fixRoundingErrors(double value, int decimalPlaces) {
-		if (value == 0) {
+		if (value == 0 || value >= Math.pow(10, decimalPlaces)) {
 			return value;
 		}
         // Define the factor for rounding to the specified number of decimal places
