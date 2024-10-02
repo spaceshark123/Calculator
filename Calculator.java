@@ -31,6 +31,8 @@ public class Calculator {
 	// state variables
 	private Operator operator = Operator.NONE;
 	private State state = State.FIRST_OPERAND;
+	private boolean addDecimal = false;
+	private double placeValue = 1;
 	private double firstOperand = 0;
 	private double secondOperand = 0;
 
@@ -64,19 +66,26 @@ public class Calculator {
 			numberButtons[i] = new JButton(Integer.toString(i));
 			numberButtons[i].setFont(new Font("Arial", Font.PLAIN, fontSize));
 			numberButtons[i].addActionListener(e -> {
-				if (state == State.FIRST_OPERAND) {
-					// add the digit while keeping the sign
-					firstOperand = (Double.compare(firstOperand, 0.0) == 0) ? number
-             					 : (Double.compare(firstOperand, -0.0) == 0) ? -number
-              					 : firstOperand * 10 + number;
-					updateText();
-				} else if (state == State.SECOND_OPERAND) {
-					// add the digit while keeping the sign
-					secondOperand = (Double.compare(secondOperand, 0.0) == 0) ? number
-             					 : (Double.compare(secondOperand, -0.0) == 0) ? -number
-              					 : secondOperand * 10 + number;
-					updateText();
+				double operand = state == State.FIRST_OPERAND ? firstOperand : secondOperand;
+				// check if the operand is zero (sign matters)
+				int zero = Double.compare(operand, 0.0) == 0 ? 1
+						: Double.compare(operand, -0.0) == 0 ? -1 : 0;
+				placeValue = addDecimal ? placeValue * 0.1 : 1;
+				int sign = zero != 0 ? zero : (int) Math.signum(operand);
+				if (zero != 0) {
+					// handle positive and negative zeros
+					operand = sign * placeValue * number;
+				} else {
+					// calculate the new number based on the place value
+					operand = addDecimal ? operand + placeValue * number * sign : operand * 10 + number * sign;
 				}
+				// update the operand based on the state
+				if (state == State.FIRST_OPERAND) {
+					firstOperand = operand;
+				} else {
+					secondOperand = operand;
+				}
+				updateText();
 			});
 		}
 		// create operator buttons
@@ -108,6 +117,8 @@ public class Calculator {
 			}
 			operator = Operator.ADD;
 			state = State.SECOND_OPERAND;
+			addDecimal = false;
+			placeValue = 1;
 			text.setText("+");
 		});
 		subtractButton.addActionListener(e -> {
@@ -118,6 +129,8 @@ public class Calculator {
 			// handle subtraction
 			operator = Operator.SUBTRACT;
 			state = State.SECOND_OPERAND;
+			addDecimal = false;
+			placeValue = 1;
 			text.setText("-");
 		});
 		multiplyButton.addActionListener(e -> {
@@ -126,6 +139,8 @@ public class Calculator {
 			}
 			operator = Operator.MULTIPLY;
 			state = State.SECOND_OPERAND;
+			addDecimal = false;
+			placeValue = 1;
 			text.setText("x");
 		});
 		divideButton.addActionListener(e -> {
@@ -134,28 +149,19 @@ public class Calculator {
 			}
 			operator = Operator.DIVIDE;
 			state = State.SECOND_OPERAND;
+			addDecimal = false;
+			placeValue = 1;
 			text.setText("÷");
 		});
 		sqrtButton.addActionListener(e -> {
-			if(state == State.FIRST_OPERAND) {
-				firstOperand = Math.sqrt(firstOperand);
-			} else if (state == State.SECOND_OPERAND) {
-				secondOperand = Math.sqrt(secondOperand);
-			}
-			updateText();
-			operator = Operator.NONE;
-			state = State.FIRST_OPERAND;
+			firstOperand = Math.sqrt(state == State.FIRST_OPERAND ? firstOperand : secondOperand);
+			reset();
 		});
 		powButton.addActionListener(e -> {
-			if(state == State.FIRST_OPERAND) {
-				firstOperand = Math.pow(firstOperand, 2);
-			} else if (state == State.SECOND_OPERAND) {
-				secondOperand = Math.pow(secondOperand, 2);
-			}
-			updateText();
-			operator = Operator.NONE;
-			state = State.FIRST_OPERAND;
+			firstOperand = Math.pow(state == State.FIRST_OPERAND ? firstOperand : secondOperand, 2);
+			reset();
 		});
+		// defines behavior for binary operators
 		equalsButton.addActionListener(e -> {
 			if(operator == Operator.NONE) {
 				return;
@@ -178,17 +184,11 @@ public class Calculator {
 					break;
 			}
 			firstOperand = result;
-			secondOperand = 0;
-			state = State.FIRST_OPERAND;
-			operator = Operator.NONE;
-			updateText();
+			reset();
 		});
 		clearButton.addActionListener(e -> {
 			firstOperand = 0;
-			secondOperand = 0;
-			state = State.FIRST_OPERAND;
-			operator = Operator.NONE;
-			updateText();
+			reset();
 		});
 		clearEntryButton.addActionListener(e -> {
 			if (state == State.FIRST_OPERAND) {
@@ -196,9 +196,17 @@ public class Calculator {
 			} else if (state == State.SECOND_OPERAND) {
 				secondOperand = 0;
 			}
+			addDecimal = false;
+			placeValue = 1;
 			updateText();
 		});
-		// todo: implement decimal button
+		decimalButton.addActionListener(e -> {
+			if (addDecimal) {
+				return;
+			}
+			addDecimal = true;
+			updateText();
+		});
 
 		// arrange button grid layout
 		buttons.add(clearButton);
@@ -233,17 +241,39 @@ public class Calculator {
 		frame.setVisible(true);
 	}
 
+	// update text field based on number
 	private void updateText() {
-		if (state == State.FIRST_OPERAND) {
-			// fix rounding errors
-			firstOperand = Math.round(firstOperand * 1000000000) / 1000000000.0;
-			text.setText(Double.toString(firstOperand).replace(".0", ""));
-		} else if (state == State.SECOND_OPERAND) {
-			// fix rounding errors
-			secondOperand = Math.round(secondOperand * 1000000000) / 1000000000.0;
-			text.setText(Double.toString(secondOperand).replace(".0", ""));
+		double rawNumber = state == State.FIRST_OPERAND ? firstOperand : secondOperand;
+		double number = fixRoundingErrors(rawNumber, 9);
+		if (number != rawNumber) {
+			updateDecimal(number);
+		}
+		String textValue = Double.toString(number);
+		if (number % 1 == 0 && addDecimal && placeValue == 1) {
+			textValue = textValue.replace(".0", ".");
+		} else if (number % 1 == 0 && placeValue == 1) {
+			textValue = textValue.replace(".0", "");
+		} else if(addDecimal) {
+			// add trailing zeros until placeValue
+			while (textValue.length() - textValue.indexOf(".") - 1 < Math.log10(1 / placeValue)) {
+				textValue += "0";
+			}
+		}
+		text.setText(textValue);
+	}
+
+	// update placeValue and addDecimal based on operand
+	private void updateDecimal(double operand) {
+		addDecimal = operand % 1 != 0;
+		// if addDecimal, set placeValue to least significant decimal place (0.1, 0.01, etc.) or else set to 1
+		if(addDecimal) {
+			int multiplier = 1;
+			while ((firstOperand * multiplier) % 1 > 1e-10) {
+				multiplier *= 10;
+			}
+			placeValue = 1d / multiplier;
 		} else {
-			text.setText("Error");
+			placeValue = 1;
 		}
 	}
 
@@ -260,5 +290,24 @@ public class Calculator {
 			return true;
 		}
 		return false;
+	}
+
+	private double fixRoundingErrors(double value, int decimalPlaces) {
+		if (value == 0) {
+			return value;
+		}
+        // Define the factor for rounding to the specified number of decimal places
+        double factor = Math.pow(10, decimalPlaces);
+        return Math.round(value * factor) / factor;
+    }
+
+	// reset calculator state
+	private void reset() {
+		state = State.FIRST_OPERAND;
+		operator = Operator.NONE;
+		addDecimal = false;
+		secondOperand = 0;
+		updateDecimal(firstOperand);
+		updateText();
 	}
 }
