@@ -68,8 +68,7 @@ public class Calculator {
 			numberButtons[i].addActionListener(e -> {
 				double operand = state == State.FIRST_OPERAND ? firstOperand : secondOperand;
 				// check if the operand is zero (sign matters)
-				int zero = Double.compare(operand, 0.0) == 0 ? 1
-						: Double.compare(operand, -0.0) == 0 ? -1 : 0;
+				int zero = Double.compare(operand, 0.0) == 0 ? 1 : Double.compare(operand, -0.0) == 0 ? -1 : 0;
 				placeValue = addDecimal ? placeValue * 0.1 : 1;
 				int sign = zero != 0 ? zero : (int) Math.signum(operand);
 				if (zero != 0) {
@@ -244,6 +243,10 @@ public class Calculator {
 	// update text field based on number
 	private void updateText() {
 		double rawNumber = state == State.FIRST_OPERAND ? firstOperand : secondOperand;
+		if(Double.isNaN(rawNumber) || Double.isInfinite(rawNumber)) {
+			text.setText("Error");
+			return;
+		}
 		double number = fixRoundingErrors(rawNumber, 9);
 		if (number != rawNumber) {
 			updateDecimal(number);
@@ -293,7 +296,7 @@ public class Calculator {
 	}
 
 	private double fixRoundingErrors(double value, int decimalPlaces) {
-		if (value == 0 || value >= Math.pow(10, decimalPlaces)) {
+		if (value == 0 || Math.abs(value) >= Math.pow(10, decimalPlaces)) {
 			return value;
 		}
         // Define the factor for rounding to the specified number of decimal places
