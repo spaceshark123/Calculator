@@ -45,6 +45,7 @@ public class Calculator {
 		setupContainers();
 		setupButtons();
 		createFrame();
+		updateText();
 	}
 	
 	private void setupContainers() {
@@ -64,10 +65,16 @@ public class Calculator {
 			numberButtons[i].setFont(new Font("Arial", Font.PLAIN, fontSize));
 			numberButtons[i].addActionListener(e -> {
 				if (state == State.FIRST_OPERAND) {
-					firstOperand = firstOperand * 10 + number;
+					// add the digit while keeping the sign
+					firstOperand = (Double.compare(firstOperand, 0.0) == 0) ? number
+             					 : (Double.compare(firstOperand, -0.0) == 0) ? -number
+              					 : firstOperand * 10 + number;
 					updateText();
 				} else if (state == State.SECOND_OPERAND) {
-					secondOperand = secondOperand * 10 + number;
+					// add the digit while keeping the sign
+					secondOperand = (Double.compare(secondOperand, 0.0) == 0) ? number
+             					 : (Double.compare(secondOperand, -0.0) == 0) ? -number
+              					 : secondOperand * 10 + number;
 					updateText();
 				}
 			});
@@ -104,9 +111,11 @@ public class Calculator {
 			text.setText("+");
 		});
 		subtractButton.addActionListener(e -> {
-			if(state != State.FIRST_OPERAND) {
+			// handle negative numbers
+			if (handleNegative()) {
 				return;
 			}
+			// handle subtraction
 			operator = Operator.SUBTRACT;
 			state = State.SECOND_OPERAND;
 			text.setText("-");
@@ -226,11 +235,30 @@ public class Calculator {
 
 	private void updateText() {
 		if (state == State.FIRST_OPERAND) {
-			text.setText(Double.toString(firstOperand));
+			// fix rounding errors
+			firstOperand = Math.round(firstOperand * 1000000000) / 1000000000.0;
+			text.setText(Double.toString(firstOperand).replace(".0", ""));
 		} else if (state == State.SECOND_OPERAND) {
-			text.setText(Double.toString(secondOperand));
+			// fix rounding errors
+			secondOperand = Math.round(secondOperand * 1000000000) / 1000000000.0;
+			text.setText(Double.toString(secondOperand).replace(".0", ""));
 		} else {
 			text.setText("Error");
 		}
+	}
+
+	// handle negative numbers
+	private boolean handleNegative() {
+		if (state == State.FIRST_OPERAND && Double.compare(firstOperand, 0d) == 0) {
+			firstOperand = -0d;
+			updateText();
+			return true;
+		}
+		if(state == State.SECOND_OPERAND && Double.compare(secondOperand, 0d) == 0) {
+			secondOperand = -0d;
+			updateText();
+			return true;
+		}
+		return false;
 	}
 }
